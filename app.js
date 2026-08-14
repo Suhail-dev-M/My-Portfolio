@@ -238,7 +238,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Keyboard nav
   document.addEventListener('keydown', e => {
-    if (isAnimating || modalOverlay.classList.contains('hidden') === false) return;
+    if (isAnimating || (modalOverlay && modalOverlay.classList.contains('hidden') === false)) return;
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) return;
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') flipToPage(currentPage + 1);
     if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   flipToPage(currentPage - 1);
   });
@@ -260,47 +262,50 @@ function flipToPage(targetIndex) {
 
   isAnimating = true;
   const direction = targetIndex > currentPage ? 'forward' : 'back';
+  const isMultiJump = Math.abs(targetIndex - currentPage) > 1;
 
   playPageFlipSound();
 
-  pages.forEach((p, idx) => {
-    if (idx === targetIndex) p.style.zIndex = '15';
-    else if (idx === currentPage) p.style.zIndex = '30';
-    else if (idx < currentPage) p.style.zIndex = `${10 - (currentPage - idx)}`;
-    else p.style.zIndex = `${10 - (idx - currentPage)}`;
-  });
+  // Reset any previous animation classes
+  pages.forEach(p => p.classList.remove('flipping-forward', 'flipping-back'));
 
-  if (direction === 'forward') {
-    pages[targetIndex].classList.add('active');
-    for (let i = currentPage; i < targetIndex; i++) {
-      const page = pages[i];
-      const delay = (i - currentPage) * 70;
-      setTimeout(() => {
-        page.classList.remove('active');
-        page.classList.add('flipping-forward');
-        page.addEventListener('animationend', () => {
-          page.classList.remove('flipping-forward');
-          page.classList.add('flipped');
-        }, { once: true });
-      }, delay);
-    }
-  } else {
-    pages[targetIndex].classList.add('active');
-    for (let i = currentPage - 1; i >= targetIndex; i--) {
-      const page = pages[i];
-      const delay = (currentPage - 1 - i) * 70;
-      setTimeout(() => {
-        page.classList.remove('flipped');
-        page.classList.add('flipping-back');
-        page.addEventListener('animationend', () => {
-          page.classList.remove('flipping-back');
-        }, { once: true });
-      }, delay);
-    }
+  // Multi-page direct jump (e.g. clicking distant nav pills)
+  if (isMultiJump) {
+    pages.forEach((p, i) => {
+      p.style.zIndex = '';
+      p.classList.remove('active', 'flipped');
+      if (i < targetIndex) p.classList.add('flipped');
+      else if (i === targetIndex) p.classList.add('active');
+    });
+    currentPage = targetIndex;
+    updateNavState();
+    if (currentPage === 2) animateSkillBars();
+    isAnimating = false;
+    return;
   }
 
-  const transitionDuration = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--page-transition')) * 1000;
-  const totalDelay = transitionDuration + Math.abs(targetIndex - currentPage) * 70;
+  // Single page smooth flip
+  pages.forEach((p, idx) => {
+    if (idx === targetIndex) p.style.zIndex = '25';
+    else if (idx === currentPage) p.style.zIndex = '30';
+    else p.style.zIndex = `${10 - Math.abs(idx - targetIndex)}`;
+  });
+
+  const currentP = pages[currentPage];
+  const targetP  = pages[targetIndex];
+
+  targetP.classList.add('active');
+  targetP.classList.remove('flipped');
+
+  if (direction === 'forward') {
+    currentP.classList.remove('active');
+    currentP.classList.add('flipping-forward');
+  } else {
+    currentP.classList.remove('flipped');
+    currentP.classList.add('flipping-back');
+  }
+
+  const transitionDuration = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--page-transition')) * 1000 || 900;
 
   setTimeout(() => {
     currentPage = targetIndex;
@@ -315,7 +320,7 @@ function flipToPage(targetIndex) {
     isAnimating = false;
 
     if (currentPage === 2) animateSkillBars();
-  }, totalDelay);
+  }, transitionDuration);
 }
 
 // ─────────────────────────────────────────────
@@ -544,8 +549,10 @@ function spawnParticles() {
 function initSwipeGesture() {
   let touchStartX = 0;
   let touchEndX   = 0;
+  let touchTarget = null;
 
   document.addEventListener('touchstart', e => {
+    touchTarget = e.target;
     touchStartX = e.changedTouches[0].screenX;
   }, { passive: true });
 
@@ -555,8 +562,11 @@ function initSwipeGesture() {
   }, { passive: true });
 
   function handleSwipe() {
+    if (touchTarget && touchTarget.closest && touchTarget.closest('input, textarea, button, .modal-card, .terminal-widget, .mini-input, .mini-textarea')) {
+      return;
+    }
     const diff = touchEndX - touchStartX;
-    if (Math.abs(diff) > 50) {
+    if (Math.abs(diff) > 65) {
       if (diff < 0 && !isAnimating) flipToPage(currentPage + 1);
       if (diff > 0 && !isAnimating) flipToPage(currentPage - 1);
     }
