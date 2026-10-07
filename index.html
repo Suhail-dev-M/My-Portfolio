@@ -1,798 +1,245 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Suhail — Developer Laboratory &amp; Portfolio</title>
-  <meta name="description" content="Suhail's Developer Laboratory &amp; Portfolio — Computer Science Student, Android &amp; Web Developer, Cybersecurity Enthusiast." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,400&family=Special+Elite&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SUHAIL</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #04050a;
+  }
+  canvas { display: block; }
+
+  .hint {
+    position: fixed;
+    left: 50%;
+    bottom: 26px;
+    transform: translateX(-50%);
+    font: 500 11px/1 ui-monospace, "SF Mono", Menlo, monospace;
+    letter-spacing: .38em;
+    text-transform: uppercase;
+    color: rgba(150, 205, 255, .38);
+    pointer-events: none;
+    user-select: none;
+    animation: breathe 6s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: .22; }
+    50%      { opacity: .75; }
+  }
+</style>
 </head>
 <body>
+<canvas id="c"></canvas>
+<div class="hint">move your cursor</div>
 
-  <!-- ===== AMBIENT PARTICLES ===== -->
-  <div id="particles" aria-hidden="true"></div>
+<script>
+(() => {
+  'use strict';
 
-  <!-- ===== SCENE: DESK ENVIRONMENT ===== -->
-  <div id="scene" role="main">
+  const canvas = document.getElementById('c');
+  const ctx    = canvas.getContext('2d', { alpha: false });
 
-    <!-- Lamp glow -->
-    <div id="lamp-glow" aria-hidden="true"></div>
+  const WORD = 'SUHAIL';
+  const TAU  = Math.PI * 2;
 
-    <!-- ===== THE NOTEBOOK ===== -->
-    <div id="notebook-wrapper" aria-label="Interactive 3D Notebook Portfolio">
-      <div id="notebook" role="region">
+  const pointer = { x: -1e4, y: -1e4 };
 
-        <!-- ===== SPIRAL BINDING ===== -->
-        <div id="spiral-binding" aria-hidden="true">
-          <div class="spiral-ring" style="--i:0"></div>
-          <div class="spiral-ring" style="--i:1"></div>
-          <div class="spiral-ring" style="--i:2"></div>
-          <div class="spiral-ring" style="--i:3"></div>
-          <div class="spiral-ring" style="--i:4"></div>
-          <div class="spiral-ring" style="--i:5"></div>
-          <div class="spiral-ring" style="--i:6"></div>
-          <div class="spiral-ring" style="--i:7"></div>
-          <div class="spiral-ring" style="--i:8"></div>
-          <div class="spiral-ring" style="--i:9"></div>
-          <div class="spiral-ring" style="--i:10"></div>
-          <div class="spiral-ring" style="--i:11"></div>
-          <div class="spiral-ring" style="--i:12"></div>
-          <div class="spiral-ring" style="--i:13"></div>
-          <div class="spiral-ring" style="--i:14"></div>
-          <div class="spiral-ring" style="--i:15"></div>
-        </div>
+  let W = 0, H = 0, dpr = 1;
+  let particles = [];
+  let frame = 0;
 
-        <!-- ===== PAGE 0: COVER ===== -->
-        <div id="page-cover" class="page active" data-page="0" role="article" aria-label="Portfolio Cover">
-          <div class="page-inner front">
-            <div class="cover-content">
-              <div class="cover-decoration top-ornament" aria-hidden="true">✦ ── ── ── ✦ ── DEVELOPER LAB ── ✦ ── ── ── ✦</div>
-              <div class="avatar-frame">
-                <img src="assets/avatar.jpg" alt="Suhail's Portrait" id="avatar-img"/>
-                <div class="avatar-ring" aria-hidden="true"></div>
-                <div class="avatar-ring ring-2" aria-hidden="true"></div>
-              </div>
-              <h1 class="cover-name">Suhail</h1>
-              <p class="cover-headline">Computer Science Student | Software Developer | Android &amp; Web Developer | Cybersecurity Enthusiast</p>
-              <div class="cover-divider" aria-hidden="true">
-                <span class="divider-gem">◆</span>
-              </div>
-              <p class="cover-tagline">Building software, exploring cybersecurity,<br/>and turning ideas into <em>real projects</em>.</p>
-              
-              <div class="philosophy-badge">
-                <span class="phil-text">Learn • Build • Experiment • Understand • Improve</span>
-              </div>
+  /* ------------------------------------------------------------------ */
+  /*  Particle                                                           */
+  /* ------------------------------------------------------------------ */
+  class Particle {
+    constructor(tx, ty, gap) {
+      this.tx = tx;                       // target x
+      this.ty = ty;                       // target y
 
-              <div class="cover-decoration bottom-ornament" aria-hidden="true">✦ ── ── ── ✦ ── ── ── ✦</div>
-              <button class="open-btn" id="open-notebook-btn" aria-label="Open portfolio notebook">
-                <span class="open-btn-text">Open Lab Notebook</span>
-                <span class="open-btn-icon">↗</span>
-              </button>
-            </div>
-          </div>
-          <div class="page-inner back page-paper">
-            <!-- Hidden back of cover -->
-          </div>
-        </div>
+      // start scattered around the centre, off in the dark
+      const ang = Math.random() * TAU;
+      const rad = Math.max(W, H) * (0.42 + Math.random() * 0.55);
+      this.x = W * 0.5 + Math.cos(ang) * rad;
+      this.y = H * 0.5 + Math.sin(ang) * rad;
 
-        <!-- ===== PAGE 1: ABOUT & PERSONA ===== -->
-        <div id="page-about" class="page" data-page="1" role="article" aria-label="About Me">
-          <div class="page-inner front page-paper">
-            <div class="page-tab" aria-hidden="true">01 ABOUT</div>
-            <div class="ruled-lines" aria-hidden="true"></div>
-            <div class="red-margin" aria-hidden="true"></div>
-            <div class="hole-punch" aria-hidden="true">
-              <div class="hole"></div><div class="hole"></div><div class="hole"></div>
-            </div>
-            <div class="page-content about-content">
-              <div class="section-header">
-                <span class="section-icon">👤</span>
-                <h2 class="section-title handwritten">About Me &amp; Philosophy</h2>
-              </div>
-              
-              <div class="about-grid">
-                <div class="about-photo-mini">
-                  <img src="assets/avatar.jpg" alt="Suhail" />
-                  <div class="photo-caption handwritten">— Suhail, CS Student</div>
-                </div>
-                <div class="about-text">
-                  <p class="handwritten-note">Hi, I'm <strong>Suhail</strong> 👋</p>
-                  <p>I'm a <span class="highlight">Computer Science student and developer</span> passionate about software development, cybersecurity, Android applications, web technologies, networking, AI, and practical problem solving.</p>
-                  <p>I enjoy learning by building real projects rather than focusing only on theory. My interests range from developing Android and web applications to exploring cybersecurity, automation, databases, Linux, networking, AI models, computer hardware, and electronics.</p>
-                  <p>I work with technologies including <strong>Python, Java, C, C++, JavaScript, TypeScript, PHP, SQL, HTML, CSS, React, Flutter, Android tools, and Supabase</strong>.</p>
-                </div>
-              </div>
+      this.vx = 0;
+      this.vy = 0;
 
-              <!-- Philosophy sticky note -->
-              <div class="sticky-note-wrapper">
-                <div class="sticky-note" style="--rot: -1.5deg; --clr: #ffd97d;">
-                  <p class="handwritten-title">My Approach:</p>
-                  <p class="handwritten-big">Learn. Build. Experiment. Understand. Improve.</p>
-                </div>
-              </div>
+      // spring + damping (randomised → staggered arrival)
+      this.k     = 0.012 + Math.random() * 0.026;
+      this.damp  = 0.885 + Math.random() * 0.05;
+      this.phase = Math.random() * TAU;
+      this.size  = gap * (0.30 + Math.random() * 0.28);
 
-              <!-- Strengths Grid -->
-              <div class="strengths-section">
-                <h3 class="sub-heading handwritten">Core Strengths</h3>
-                <div class="strengths-grid">
-                  <div class="strength-card">
-                    <span class="strength-icon">🧩</span>
-                    <div class="strength-info">
-                      <h4>Problem Solving</h4>
-                      <p>Troubleshooting real technical problems and investigating root causes.</p>
-                    </div>
-                  </div>
-                  <div class="strength-card">
-                    <span class="strength-icon">🚀</span>
-                    <div class="strength-info">
-                      <h4>Self-Learning</h4>
-                      <p>Experimenting with unfamiliar technologies through practical projects.</p>
-                    </div>
-                  </div>
-                  <div class="strength-card">
-                    <span class="strength-icon">🌐</span>
-                    <div class="strength-info">
-                      <h4>Cross-Domain Knowledge</h4>
-                      <p>Span software, cybersecurity, networking, hardware, electronics &amp; AI.</p>
-                    </div>
-                  </div>
-                  <div class="strength-card">
-                    <span class="strength-icon">🛠️</span>
-                    <div class="strength-info">
-                      <h4>Building Projects</h4>
-                      <p>Prefer turning concepts into functional applications and tools.</p>
-                    </div>
-                  </div>
-                  <div class="strength-card">
-                    <span class="strength-icon">🔍</span>
-                    <div class="strength-info">
-                      <h4>Technical Curiosity</h4>
-                      <p>Exploring how systems operate at both high and low levels.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+      // cyan → blue → violet across the word
+      const hue = 188 + (tx / W) * 112;
+      this.color = 'hsla(' + hue.toFixed(1) + ',100%,55%,0.45)';
+    }
 
-              <!-- Education Block -->
-              <div class="education-block">
-                <h3 class="sub-heading handwritten">Academic Track</h3>
-                <div class="edu-card">
-                  <div class="edu-header">
-                    <span class="edu-badge">Computer Science Student</span>
-                    <span class="edu-focus">Current Focus: <strong>DSA using C</strong></span>
-                  </div>
-                  <p class="edu-subjects">
-                    <strong>Areas Studied:</strong> C Programming, Data Structures &amp; Algorithms, Web Development, Android Development, Database Systems, Computer Networking, Cybersecurity, Software Engineering.
-                  </p>
-                  <div class="edu-details-note handwritten">
-                    <span>Degree / College Details: [Student Profile — Computer Science]</span>
-                  </div>
-                </div>
-              </div>
+    update(t) {
+      // gentle idle shimmer
+      const wobX = Math.sin(t + this.phase) * 1.8;
+      const wobY = Math.cos(t * 1.27 + this.phase) * 1.8;
 
-              <div class="doodle-corner" aria-hidden="true">⚡</div>
-            </div>
-          </div>
-          <div class="page-inner back page-paper">
-            <div class="ruled-lines" aria-hidden="true"></div>
-            <div class="red-margin" aria-hidden="true"></div>
-          </div>
-        </div>
+      this.vx += (this.tx + wobX - this.x) * this.k;
+      this.vy += (this.ty + wobY - this.y) * this.k;
 
-        <!-- ===== PAGE 2: TECHNICAL & CYBERSECURITY SKILLS MATRIX ===== -->
-        <div id="page-skills" class="page" data-page="2" role="article" aria-label="Skills">
-          <div class="page-inner front page-paper">
-            <div class="page-tab" aria-hidden="true">02 SKILLS</div>
-            <div class="ruled-lines" aria-hidden="true"></div>
-            <div class="red-margin" aria-hidden="true"></div>
-            <div class="hole-punch" aria-hidden="true">
-              <div class="hole"></div><div class="hole"></div><div class="hole"></div>
-            </div>
-            <div class="page-content skills-content">
-              <div class="section-header">
-                <span class="section-icon">⚡</span>
-                <h2 class="section-title handwritten">Technical &amp; Cybersecurity Matrix</h2>
-              </div>
+      // pointer repulsion
+      const mdx = this.x - pointer.x;
+      const mdy = this.y - pointer.y;
+      const R   = 140;
+      const d2  = mdx * mdx + mdy * mdy;
 
-              <!-- Filter Pills for Skills -->
-              <div class="skills-filter-bar">
-                <button class="skill-filter-btn active" data-filter="all">All</button>
-                <button class="skill-filter-btn" data-filter="prog">Programming</button>
-                <button class="skill-filter-btn" data-filter="web">Web</button>
-                <button class="skill-filter-btn" data-filter="android">Android</button>
-                <button class="skill-filter-btn" data-filter="sec">Cybersecurity</button>
-                <button class="skill-filter-btn" data-filter="net">Networking</button>
-                <button class="skill-filter-btn" data-filter="ai">AI &amp; ML</button>
-                <button class="skill-filter-btn" data-filter="hw">Hardware &amp; Elec</button>
-                <button class="skill-filter-btn" data-filter="db">Backend &amp; DB</button>
-              </div>
+      if (d2 < R * R && d2 > 0.0001) {
+        const d = Math.sqrt(d2);
+        const f = (1 - d / R) * 5.5;
+        this.vx += (mdx / d) * f;
+        this.vy += (mdy / d) * f;
+      }
 
-              <div class="skills-grid">
-                
-                <!-- Programming Languages -->
-                <div class="skill-category" data-cat="prog">
-                  <h3 class="skill-cat-title handwritten">💻 Programming Languages</h3>
-                  <div class="skill-items">
-                    <div class="skill-chip" style="--clr: #3572A5;">🐍 Python</div>
-                    <div class="skill-chip" style="--clr: #b07219;">☕ Java</div>
-                    <div class="skill-chip" style="--clr: #555555;">⚡ C</div>
-                    <div class="skill-chip" style="--clr: #f34b7d;">🔷 C++</div>
-                    <div class="skill-chip" style="--clr: #f7df1e;">🟡 JavaScript</div>
-                    <div class="skill-chip" style="--clr: #3178c6;">🟦 TypeScript</div>
-                    <div class="skill-chip" style="--clr: #4F5D95;">🐘 PHP</div>
-                    <div class="skill-chip" style="--clr: #e38c00;">🗄️ SQL</div>
-                    <div class="skill-chip" style="--clr: #e34f26;">🟧 HTML5</div>
-                    <div class="skill-chip" style="--clr: #264de4;">🔵 CSS3</div>
-                  </div>
-                </div>
+      this.vx *= this.damp;
+      this.vy *= this.damp;
 
-                <!-- Web Development -->
-                <div class="skill-category" data-cat="web">
-                  <h3 class="skill-cat-title handwritten">🌐 Web Development</h3>
-                  <div class="skill-items">
-                    <div class="skill-chip" style="--clr: #61dafb;">⚛️ React</div>
-                    <div class="skill-chip" style="--clr: #38bdf8;">💨 Tailwind CSS</div>
-                    <div class="skill-chip" style="--clr: #646cff;">⚡ Vite</div>
-                    <div class="skill-chip" style="--clr: #7952b3;">🟪 Bootstrap</div>
-                    <div class="skill-chip" style="--clr: #3178c6;">🔷 TypeScript</div>
-                    <div class="skill-chip" style="--clr: #4F5D95;">🐘 PHP</div>
-                    <div class="skill-chip" style="--clr: #0d9488;">📐 Responsive UI</div>
-                    <div class="skill-chip" style="--clr: #c9a227;">🔌 REST APIs</div>
-                    <div class="skill-chip" style="--clr: #3ecf8e;">🗃️ DB Integration</div>
-                  </div>
-                </div>
+      // speed clamp so the initial rush stays smooth
+      const sp2 = this.vx * this.vx + this.vy * this.vy;
+      if (sp2 > 484) {                    // 22 px / frame
+        const s = 22 / Math.sqrt(sp2);
+        this.vx *= s;
+        this.vy *= s;
+      }
 
-                <!-- Android Development -->
-                <div class="skill-category" data-cat="android">
-                  <h3 class="skill-cat-title handwritten">📱 Android Development</h3>
-                  <div class="skill-items">
-                    <div class="skill-chip" style="--clr: #3ddc84;">🤖 Android Studio</div>
-                    <div class="skill-chip" style="--clr: #b07219;">☕ Java (Android)</div>
-                    <div class="skill-chip" style="--clr: #02569B;">🟦 Flutter</div>
-                    <div class="skill-chip" style="--clr: #0288d1;">🧩 Sketchware Pro</div>
-                    <div class="skill-chip" style="--clr: #ff9800;">🔍 APK Analysis</div>
-                    <div class="skill-chip" style="--clr: #e65100;">🛠️ APKTool</div>
-                    <div class="skill-chip" style="--clr: #7b1fa2;">📜 Smali</div>
-                    <div class="skill-chip" style="--clr: #00897b;">🔌 ADB &amp; Fastboot</div>
-                    <div class="skill-chip" style="--clr: #3ecf8e;">⚡ Supabase Integration</div>
-                    <div class="skill-chip" style="--clr: #d32f2f;">🔐 Auth &amp; CRUD</div>
-                  </div>
-                </div>
+      this.x += this.vx;
+      this.y += this.vy;
+    }
 
-                <!-- Cybersecurity & Ethical Hacking -->
-                <div class="skill-category" data-cat="sec">
-                  <h3 class="skill-cat-title handwritten">🛡️ Cybersecurity &amp; Hacking</h3>
-                  <div class="skill-items">
-                    <div class="skill-chip" style="--clr: #557cbf;">🐲 Kali Linux</div>
-                    <div class="skill-chip" style="--clr: #2196f3;">🔍 Nmap</div>
-                    <div class="skill-chip" style="--clr: #f44336;">💣 Metasploit</div>
-                    <div class="skill-chip" style="--clr: #4caf50;">🛡️ Nessus</div>
-                    <div class="skill-chip" style="--clr: #ff9800;">🌐 Shodan</div>
-                    <div class="skill-chip" style="--clr: #00bcd4;">🧪 VirtualBox Labs</div>
-                    <div class="skill-chip" style="--clr: #9c27b0;">🎯 Penetration Testing</div>
-                    <div class="skill-chip" style="--clr: #e91e63;">🔬 Vulnerability Assessment</div>
-                    <div class="skill-chip" style="--clr: #673ab7;">📱 APK Security Analysis</div>
-                  </div>
-                </div>
+    draw() {
+      ctx.fillStyle = this.color;
+      ctx.fillRect(
+        this.x - this.size * 0.5,
+        this.y - this.size * 0.5,
+        this.size,
+        this.size
+      );
+    }
+  }
 
-                <!-- Networking -->
-                <div class="skill-category" data-cat="net">
-                  <h3 class="skill-cat-title handwritten">📡 Networking &amp; Systems</h3>
-                  <div class="skill-items">
-                    <div class="skill-chip" style="--clr: #0288d1;">🌐 TCP/IP</div>
-                    <div class="skill-chip" style="--clr: #009688;">🔢 IPv4 &amp; IPv6</div>
-                    <div class="skill-chip" style="--clr: #ff5722;">🏷️ DNS Routing</div>
-                    <div class="skill-chip" style="--clr: #3f51b5;">🔀 NAT &amp; Bridged Net</div>
-                    <div class="skill-chip" style="--clr: #7952b3;">🔒 VPN Concepts</div>
-                    <div class="skill-chip" style="--clr: #607d8b;">🛠️ ping / tracert / nslookup</div>
-                    <div class="skill-chip" style="--clr: #4caf50;">⚡ Network Scanning &amp; Troubleshooting</div>
-                  </div>
-                </div>
+  /* ------------------------------------------------------------------ */
+  /*  Build particle cloud from the text shape                           */
+  /* ------------------------------------------------------------------ */
+  function buildText() {
+    const off  = document.createElement('canvas');
+    off.width  = W;
+    off.height = H;
+    const o = off.getContext('2d');
 
-                <!-- AI & Machine Learning -->
-                <div class="skill-category" data-cat="ai">
-                  <h3 class="skill-cat-title handwritten">🤖 AI &amp; Machine Learning</h3>
-                  <div class="skill-items">
-                    <div class="skill-chip" style="--clr: #ff6000;">🧠 Qwen2.5-Coder (3B/7B)</div>
-                    <div class="skill-chip" style="--clr: #0d9488;">⚡ DeepSeek Coder 6.7B</div>
-                    <div class="skill-chip" style="--clr: #ffcc00;">🤗 Hugging Face &amp; Transformers</div>
-                    <div class="skill-chip" style="--clr: #20beff;">📊 Kaggle &amp; Gradio</div>
-                    <div class="skill-chip" style="--clr: #9c27b0;">🚀 AI Model Deployment</div>
-                    <div class="skill-chip" style="--clr: #e91e63;">💻 AI-Assisted Coding</div>
-                  </div>
-                </div>
+    const fontSize = Math.min(W * 0.17, H * 0.40);
 
-                <!-- Backend & Database -->
-                <div class="skill-category" data-cat="db">
-                  <h3 class="skill-cat-title handwritten">🗄️ Backend &amp; Database</h3>
-                  <div class="skill-items">
-                    <div class="skill-chip" style="--clr: #3ecf8e;">⚡ Supabase (Primary DB)</div>
-                    <div class="skill-chip" style="--clr: #e38c00;">🐬 SQL Queries</div>
-                    <div class="skill-chip" style="--clr: #4F5D95;">🐘 PHP Backend</div>
-                    <div class="skill-chip" style="--clr: #00bcd4;">🔐 User Auth &amp; Profiles</div>
-                    <div class="skill-chip" style="--clr: #ff9800;">🔄 CRUD Operations</div>
-                    <div class="skill-chip" style="--clr: #7c3aed;">☁️ Cloud Data Storage</div>
-                  </div>
-                </div>
+    o.textAlign    = 'center';
+    o.textBaseline = 'middle';
+    o.fillStyle    = '#fff';
+    o.font = '900 ' + fontSize +
+             'px "Arial Black","Helvetica Neue",Impact,system-ui,sans-serif';
 
-                <!-- Hardware & Electronics -->
-                <div class="skill-category" data-cat="hw">
-                  <h3 class="skill-cat-title handwritten">🔌 Hardware &amp; Electronics</h3>
-                  <div class="skill-items">
-                    <div class="skill-chip" style="--clr: #e65100;">🔋 Li-ion UPS Circuits</div>
-                    <div class="skill-chip" style="--clr: #f57c00;">⚡ Voltage Regulators</div>
-                    <div class="skill-chip" style="--clr: #00897b;">📡 ESP32 &amp; Arduino</div>
-                    <div class="skill-chip" style="--clr: #5c6bc0;">💾 CH341A &amp; USB-UART</div>
-                    <div class="skill-chip" style="--clr: #78909c;">🖥️ Computer Systems &amp; Hardware</div>
-                    <div class="skill-chip" style="--clr: #8d6e63;">📦 MBR Parsing &amp; Raw Sector Analysis</div>
-                  </div>
-                </div>
+    o.fillText(WORD, W * 0.5, H * 0.5);
 
-                <!-- Dev Tools -->
-                <div class="skill-category" data-cat="db">
-                  <h3 class="skill-cat-title handwritten">🛠️ Development Tools</h3>
-                  <div class="skill-items">
-                    <div class="skill-chip" style="--clr: #007acc;">🔵 VS Code</div>
-                    <div class="skill-chip" style="--clr: #f05032;">🦊 Git &amp; GitHub</div>
-                    <div class="skill-chip" style="--clr: #68a063;">🟢 Node.js &amp; npm</div>
-                    <div class="skill-chip" style="--clr: #0288d1;">📦 VirtualBox</div>
-                  </div>
-                </div>
+    const data = o.getImageData(0, 0, W, H).data;
+    const gap  = Math.max(3, Math.round(fontSize / 52));
 
-              </div>
+    particles.length = 0;
 
-              <!-- Domain Proficiency Bars -->
-              <div class="skill-bars">
-                <h3 class="sub-heading handwritten">Capability Benchmarks</h3>
-                <div class="skill-bar-item">
-                  <span class="skill-bar-label handwritten">Android &amp; Web Software</span>
-                  <div class="skill-bar-track"><div class="skill-bar-fill" style="--pct: 92%"></div></div>
-                </div>
-                <div class="skill-bar-item">
-                  <span class="skill-bar-label handwritten">Cybersecurity &amp; Linux Labs</span>
-                  <div class="skill-bar-track"><div class="skill-bar-fill" style="--pct: 88%"></div></div>
-                </div>
-                <div class="skill-bar-item">
-                  <span class="skill-bar-label handwritten">Supabase &amp; Cloud DBs</span>
-                  <div class="skill-bar-track"><div class="skill-bar-fill" style="--pct: 86%"></div></div>
-                </div>
-                <div class="skill-bar-item">
-                  <span class="skill-bar-label handwritten">Hardware &amp; AI Integration</span>
-                  <div class="skill-bar-track"><div class="skill-bar-fill" style="--pct: 83%"></div></div>
-                </div>
-              </div>
+    for (let y = 0; y < H; y += gap) {
+      for (let x = 0; x < W; x += gap) {
+        if (data[(y * W + x) * 4 + 3] > 128) {
+          particles.push(
+            new Particle(
+              x + (Math.random() - 0.5) * gap,
+              y + (Math.random() - 0.5) * gap,
+              gap
+            )
+          );
+        }
+      }
+    }
+  }
 
-              <div class="doodle-corner" aria-hidden="true">★</div>
-            </div>
-          </div>
-          <div class="page-inner back page-paper">
-            <div class="ruled-lines" aria-hidden="true"></div>
-            <div class="red-margin" aria-hidden="true"></div>
-          </div>
-        </div>
+  /* ------------------------------------------------------------------ */
+  /*  Resize                                                             */
+  /* ------------------------------------------------------------------ */
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-        <!-- ===== PAGE 3: FEATURED PROJECTS LABORATORY ===== -->
-        <div id="page-projects" class="page" data-page="3" role="article" aria-label="Featured Projects">
-          <div class="page-inner front page-paper">
-            <div class="page-tab" aria-hidden="true">03 FEATURED</div>
-            <div class="ruled-lines" aria-hidden="true"></div>
-            <div class="red-margin" aria-hidden="true"></div>
-            <div class="hole-punch" aria-hidden="true">
-              <div class="hole"></div><div class="hole"></div><div class="hole"></div>
-            </div>
-            <div class="page-content projects-content">
-              <div class="section-header">
-                <span class="section-icon">🚀</span>
-                <h2 class="section-title handwritten">Featured Laboratory Projects</h2>
-              </div>
-              
-              <div class="projects-list">
-                
-                <!-- Project 01: GlassMessaging -->
-                <div class="project-card" data-proj="glassmessaging">
-                  <div class="project-badge-num">01</div>
-                  <div class="project-emoji">💬</div>
-                  <div class="project-info">
-                    <h3 class="project-name handwritten">GlassMessaging</h3>
-                    <p class="project-category">Android / Messaging / Backend</p>
-                    <p class="project-desc">Modern Android communication app featuring Supabase cloud-backed user registration, authentication, database CRUD, and real-time messaging workflows.</p>
-                    <div class="concept-flow">
-                      <span class="flow-step">Android</span> → 
-                      <span class="flow-step">Backend</span> → 
-                      <span class="flow-step">Database</span> → 
-                      <span class="flow-step">Authentication</span> → 
-                      <span class="flow-step">Messaging</span>
-                    </div>
-                    <div class="project-tags">
-                      <span class="tag">Android</span>
-                      <span class="tag">Sketchware Pro</span>
-                      <span class="tag">Supabase</span>
-                      <span class="tag">SQL</span>
-                      <span class="tag">Auth</span>
-                      <span class="tag">CRUD</span>
-                    </div>
-                  </div>
-                  <button class="inspect-btn" onclick="openProjectModal('glassmessaging')" aria-label="Inspect GlassMessaging details">Inspect Spec ↗</button>
-                </div>
+    W = window.innerWidth;
+    H = window.innerHeight;
 
-                <!-- Project 02: Storage Recovery & Analysis Tool -->
-                <div class="project-card" data-proj="storagerecovery">
-                  <div class="project-badge-num">02</div>
-                  <div class="project-emoji">💾</div>
-                  <div class="project-info">
-                    <h3 class="project-name handwritten">Storage Recovery &amp; Analysis Tool</h3>
-                    <p class="project-category">Python / Storage / System Programming</p>
-                    <p class="project-desc">Python-based storage inspection and data recovery software designed to detect connected disk devices, parse MBR, scan raw sectors, and identify NTFS, FAT32 &amp; exFAT file systems.</p>
-                    <div class="project-tags">
-                      <span class="tag">Python</span>
-                      <span class="tag">Tkinter GUI</span>
-                      <span class="tag">WMI</span>
-                      <span class="tag">psutil</span>
-                      <span class="tag">Raw Sector Parsing</span>
-                      <span class="tag">MBR</span>
-                    </div>
-                  </div>
-                  <button class="inspect-btn" onclick="openProjectModal('storagerecovery')" aria-label="Inspect Storage Recovery details">Inspect Spec ↗</button>
-                </div>
+    canvas.width  = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
 
-                <!-- Project 03: Cybersecurity Lab -->
-                <div class="project-card" data-proj="cyberlab">
-                  <div class="project-badge-num">03</div>
-                  <div class="project-emoji">🛡️</div>
-                  <div class="project-info">
-                    <h3 class="project-name handwritten">Cybersecurity &amp; Ethical Hacking Lab</h3>
-                    <p class="project-category">Security / Linux / Networking</p>
-                    <p class="project-desc">Hands-on security testing environment built in VirtualBox to explore network discovery, port scanning, service enumeration, vulnerability assessment, and exploit workflows in isolated networks.</p>
-                    <div class="project-tags">
-                      <span class="tag">Kali Linux</span>
-                      <span class="tag">VirtualBox</span>
-                      <span class="tag">Nmap</span>
-                      <span class="tag">Metasploit</span>
-                      <span class="tag">Nessus</span>
-                      <span class="tag">Shodan</span>
-                    </div>
-                  </div>
-                  <button class="inspect-btn" onclick="openProjectModal('cyberlab')" aria-label="Inspect Cybersecurity Lab details">Inspect Spec ↗</button>
-                </div>
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-                <!-- Project 04: Supabase Android Applications -->
-                <div class="project-card" data-proj="supabaseandroid">
-                  <div class="project-badge-num">04</div>
-                  <div class="project-emoji">📱</div>
-                  <div class="project-info">
-                    <h3 class="project-name handwritten">Supabase Android Applications</h3>
-                    <p class="project-category">Mobile / Cloud Database Integration</p>
-                    <p class="project-desc">Suite of Android applications implementing Supabase cloud database connectivity, URL &amp; API key authentication, and complete GET, INSERT, UPDATE, DELETE (CRUD) operations.</p>
-                    <div class="project-tags">
-                      <span class="tag">Android</span>
-                      <span class="tag">Sketchware Pro</span>
-                      <span class="tag">Supabase</span>
-                      <span class="tag">SQL</span>
-                      <span class="tag">REST APIs</span>
-                      <span class="tag">Cloud DB</span>
-                    </div>
-                  </div>
-                  <button class="inspect-btn" onclick="openProjectModal('supabaseandroid')" aria-label="Inspect Supabase Android details">Inspect Spec ↗</button>
-                </div>
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#04050a';
+    ctx.fillRect(0, 0, W, H);
 
-              </div>
+    buildText();
+  }
 
-              <div class="doodle-corner" aria-hidden="true">◈</div>
-            </div>
-          </div>
-          <div class="page-inner back page-paper">
-            <div class="ruled-lines" aria-hidden="true"></div>
-            <div class="red-margin" aria-hidden="true"></div>
-          </div>
-        </div>
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(resize, 180);
+  });
 
-        <!-- ===== PAGE 4: SPECIALIZED EXPLORATIONS & SYSTEMS LAB ===== -->
-        <div id="page-lab" class="page" data-page="4" role="article" aria-label="Lab Showcase">
-          <div class="page-inner front page-paper">
-            <div class="page-tab" aria-hidden="true">04 SHOWCASE</div>
-            <div class="ruled-lines" aria-hidden="true"></div>
-            <div class="red-margin" aria-hidden="true"></div>
-            <div class="hole-punch" aria-hidden="true">
-              <div class="hole"></div><div class="hole"></div><div class="hole"></div>
-            </div>
-            <div class="page-content lab-content">
-              <div class="section-header">
-                <span class="section-icon">🔬</span>
-                <h2 class="section-title handwritten">Specialized Explorations &amp; Lab Bench</h2>
-              </div>
+  /* ------------------------------------------------------------------ */
+  /*  Pointer                                                            */
+  /* ------------------------------------------------------------------ */
+  window.addEventListener('pointermove', (e) => {
+    pointer.x = e.clientX;
+    pointer.y = e.clientY;
+  }, { passive: true });
 
-              <div class="projects-grid-mini">
+  window.addEventListener('mouseout', (e) => {
+    if (!e.relatedTarget) { pointer.x = -1e4; pointer.y = -1e4; }
+  });
 
-                <!-- Project 05: ChatZonee -->
-                <div class="mini-project-card">
-                  <div class="card-head">
-                    <span class="proj-num">05</span>
-                    <span class="proj-icon">🌐</span>
-                    <h3 class="handwritten">ChatZonee</h3>
-                  </div>
-                  <p class="mini-desc">Web-based communication project exploring interactive chat functionality, PHP backend logic, data handling, and custom frontend interfaces.</p>
-                  <div class="mini-tags">
-                    <span>HTML/CSS</span><span>JS</span><span>PHP</span><span>SQL</span>
-                  </div>
-                </div>
+  window.addEventListener('blur', () => {
+    pointer.x = -1e4;
+    pointer.y = -1e4;
+  });
 
-                <!-- Project 06: E-Commerce Website -->
-                <div class="mini-project-card">
-                  <div class="card-head">
-                    <span class="proj-num">06</span>
-                    <span class="proj-icon">🛒</span>
-                    <h3 class="handwritten">E-Commerce Web Project</h3>
-                  </div>
-                  <p class="mini-desc">Modern shopping website built with React and connected to Supabase for dynamic product listings, user authentication, and CRUD operations.</p>
-                  <div class="mini-tags">
-                    <span>React</span><span>Supabase</span><span>SQL</span><span>Tailwind</span>
-                  </div>
-                </div>
+  /* ------------------------------------------------------------------ */
+  /*  Main loop                                                          */
+  /* ------------------------------------------------------------------ */
+  function loop() {
+    frame++;
+    const t = frame * 0.02;
 
-                <!-- Project 07: Selenium Automation -->
-                <div class="mini-project-card">
-                  <div class="card-head">
-                    <span class="proj-num">07</span>
-                    <span class="proj-icon">🤖</span>
-                    <h3 class="handwritten">Selenium Automation</h3>
-                  </div>
-                  <p class="mini-desc">Python-based browser automation suite using Selenium WebDriver for element identification, automated web interactions, and workflow automation.</p>
-                  <div class="mini-tags">
-                    <span>Python</span><span>Selenium</span><span>Web Scraping</span>
-                  </div>
-                </div>
+    // motion-trail fade
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(4,5,10,0.30)';
+    ctx.fillRect(0, 0, W, H);
 
-                <!-- Project 08: AI Model Experiments -->
-                <div class="mini-project-card">
-                  <div class="card-head">
-                    <span class="proj-num">08</span>
-                    <span class="proj-icon">🧠</span>
-                    <h3 class="handwritten">AI Model Experiments</h3>
-                  </div>
-                  <p class="mini-desc">Explorations in running and deploying coding models (Qwen2.5-Coder 3B/7B, DeepSeek Coder 6.7B) via Hugging Face, Kaggle, Transformers &amp; Gradio.</p>
-                  <div class="mini-tags">
-                    <span>Qwen2.5</span><span>DeepSeek</span><span>Hugging Face</span><span>Gradio</span>
-                  </div>
-                </div>
+    // additive neon blending
+    ctx.globalCompositeOperation = 'lighter';
 
-                <!-- Project 09: Electronics Projects -->
-                <div class="mini-project-card">
-                  <div class="card-head">
-                    <span class="proj-num">09</span>
-                    <span class="proj-icon">🔋</span>
-                    <h3 class="handwritten">Electronics &amp; Mini UPS</h3>
-                  </div>
-                  <p class="mini-desc">Hardware lab experiments featuring a Mini Li-ion UPS with charging modules, low-voltage regulators (3.0-4.2V conversion), ESP32 &amp; Arduino microcontrollers.</p>
-                  <div class="mini-tags">
-                    <span>Li-ion</span><span>Regulators</span><span>ESP32</span><span>Arduino</span>
-                  </div>
-                </div>
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      p.update(t);
+      p.draw();
+    }
 
-                <!-- Project 10: Networking Lab -->
-                <div class="mini-project-card">
-                  <div class="card-head">
-                    <span class="proj-num">10</span>
-                    <span class="proj-icon">📡</span>
-                    <h3 class="handwritten">Networking Lab</h3>
-                  </div>
-                  <p class="mini-desc">Hands-on troubleshooting environment for DNS, IPv4/IPv6 routing, NAT, VirtualBox bridged networks, and scanning via ping, tracert &amp; nslookup.</p>
-                  <div class="mini-tags">
-                    <span>TCP/IP</span><span>DNS</span><span>NAT</span><span>VirtualBox</span>
-                  </div>
-                </div>
+    requestAnimationFrame(loop);
+  }
 
-              </div>
-
-              <!-- Hardware Bench Spec Box -->
-              <div class="hardware-bench-box">
-                <div class="bench-title handwritten">🖥️ Computer Hardware &amp; Systems Lab</div>
-                <p class="bench-text">
-                  Configured and maintained computer hardware for Linux virtualization, testing, and lab environments:
-                </p>
-                <div class="spec-chips">
-                  <span class="spec-chip">Virtualization Testing</span>
-                  <span class="spec-chip">Computer Hardware Assembly</span>
-                  <span class="spec-chip">High-Speed SSD Storage</span>
-                  <span class="spec-chip">System Troubleshooting</span>
-                  <span class="spec-chip">CH341A Programmer</span>
-                </div>
-              </div>
-
-              <div class="doodle-corner" aria-hidden="true">🔬</div>
-            </div>
-          </div>
-          <div class="page-inner back page-paper">
-            <div class="ruled-lines" aria-hidden="true"></div>
-            <div class="red-margin" aria-hidden="true"></div>
-          </div>
-        </div>
-
-        <!-- ===== PAGE 5: LEARNING ROADMAP & LAB TERMINAL ===== -->
-        <div id="page-contact" class="page" data-page="5" role="article" aria-label="Roadmap &amp; Terminal">
-          <div class="page-inner front page-paper">
-            <div class="page-tab" aria-hidden="true">05 ROADMAP</div>
-            <div class="ruled-lines" aria-hidden="true"></div>
-            <div class="red-margin" aria-hidden="true"></div>
-            <div class="hole-punch" aria-hidden="true">
-              <div class="hole"></div><div class="hole"></div><div class="hole"></div>
-            </div>
-            <div class="page-content contact-content">
-              <div class="section-header">
-                <span class="section-icon">🗺️</span>
-                <h2 class="section-title handwritten">Learning Roadmap &amp; Contact CLI</h2>
-              </div>
-
-              <!-- Visual Roadmap Tracks -->
-              <div class="roadmap-section">
-                <h3 class="sub-heading handwritten">Current Learning Roadmap</h3>
-                <div class="roadmap-grid">
-                  <div class="rm-track">
-                    <span class="rm-label">Programming:</span>
-                    <span class="rm-chain">Python ➔ Java ➔ C ➔ C++ ➔ JavaScript ➔ TypeScript ➔ PHP</span>
-                  </div>
-                  <div class="rm-track">
-                    <span class="rm-label">Development:</span>
-                    <span class="rm-chain">Web ➔ Android ➔ Flutter ➔ Backend ➔ Database ➔ Cloud</span>
-                  </div>
-                  <div class="rm-track">
-                    <span class="rm-label">Security:</span>
-                    <span class="rm-chain">Linux ➔ Networking ➔ Nmap ➔ Vuln Assessment ➔ Ethical Hacking</span>
-                  </div>
-                  <div class="rm-track">
-                    <span class="rm-label">AI &amp; ML:</span>
-                    <span class="rm-chain">AI Models ➔ Hugging Face ➔ Transformers ➔ AI Apps</span>
-                  </div>
-                  <div class="rm-track">
-                    <span class="rm-label">Systems:</span>
-                    <span class="rm-chain">Hardware ➔ Linux ➔ Networking ➔ Storage ➔ Electronics</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Interactive Developer Terminal -->
-              <div class="terminal-widget">
-                <div class="terminal-header">
-                  <div class="terminal-dots">
-                    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
-                  </div>
-                  <span class="terminal-title">suhail@dev-lab: ~ (CLI)</span>
-                </div>
-                <div class="terminal-body" id="terminal-output">
-                  <div class="term-line"><span class="term-prompt">suhail@dev-lab:~$</span> welcome</div>
-                  <div class="term-line term-out">Type 'help', 'whoami', 'skills', 'projects', 'roadmap', or 'contact'</div>
-                </div>
-                <div class="terminal-input-row">
-                  <span class="term-prompt">suhail@dev-lab:~$</span>
-                  <input type="text" id="terminal-input" placeholder="type a command..." aria-label="Terminal CLI input" autocomplete="off"/>
-                </div>
-                <div class="terminal-quick-cmds">
-                  <button class="term-btn" onclick="runTermCmd('whoami')">whoami</button>
-                  <button class="term-btn" onclick="runTermCmd('skills')">skills</button>
-                  <button class="term-btn" onclick="runTermCmd('projects')">projects</button>
-                  <button class="term-btn" onclick="runTermCmd('roadmap')">roadmap</button>
-                  <button class="term-btn" onclick="runTermCmd('contact')">contact</button>
-                  <button class="term-btn" onclick="runTermCmd('clear')">clear</button>
-                </div>
-              </div>
-
-              <!-- Contact Cards & Form -->
-              <div class="contact-links" style="margin-top: 14px;">
-                <a href="mailto:suhail@example.com" class="contact-card" id="email-link">
-                  <div class="contact-icon">📧</div>
-                  <div class="contact-info">
-                    <span class="contact-type handwritten">Email</span>
-                    <span class="contact-value">suhail777r77@gmail.com</span>
-                  </div>
-                </a>
-                <a href="https://github.com/suhail" target="_blank" rel="noopener" class="contact-card" id="github-link">
-                  <div class="contact-icon">🐙</div>
-                  <div class="contact-info">
-                    <span class="contact-type handwritten">GitHub</span>
-                    <span class="contact-value">github.com/Suhail-dev-M</span>
-                  </div>
-                </a>
-                <a href="https://linkedin.com/in/suhail" target="_blank" rel="noopener" class="contact-card" id="linkedin-link">
-                  <div class="contact-icon">💼</div>
-                  <div class="contact-info">
-                    <span class="contact-type handwritten">LinkedIn</span>
-                    <span class="contact-value">linkedin.com/in/-suxha-il</span>
-                  </div>
-                </a>
-                <a href="https://twitter.com/suhail_dev" target="_blank" rel="noopener" class="contact-card" id="twitter-link">
-                  <div class="contact-icon">🐦</div>
-                  <div class="contact-info">
-                    <span class="contact-type handwritten">Twitter</span>
-                    <span class="contact-value">x.com/suxha_il</span>
-                  </div>
-                </a>
-              </div>
-
-              <div class="contact-form-mini">
-                <h3 class="handwritten" style="margin-bottom: 6px; color: #5c4033;">Send a Direct Message</h3>
-                <input type="text" id="contact-name" placeholder="Your name..." class="mini-input" aria-label="Your name" />
-                <textarea id="contact-msg" placeholder="Hey Suhail, let's connect and build something together..." class="mini-textarea" aria-label="Your message"></textarea>
-                <button class="send-btn" id="send-msg-btn" aria-label="Send message">
-                  <span>Send Message ✈️</span>
-                </button>
-                <div id="send-success" class="send-success hidden">
-                  <span class="handwritten">Message sent! 🎉 I'll respond to your message soon.</span>
-                </div>
-              </div>
-
-              <div class="doodle-corner" aria-hidden="true">♡</div>
-            </div>
-          </div>
-          <div class="page-inner back page-paper last-page-back">
-            <div class="ruled-lines" aria-hidden="true"></div>
-            <div class="red-margin" aria-hidden="true"></div>
-            <div class="last-page-content">
-              <p class="handwritten" style="text-align:center; color: #5c4033; font-size: 1.3rem;">~ End of Lab Notebook ~</p>
-              <p class="handwritten" style="text-align:center; color: #888; font-size: 1rem;">Learn. Build. Experiment. Understand. Improve. ♡</p>
-            </div>
-          </div>
-        </div>
-
-      </div><!-- /#notebook -->
-    </div><!-- /#notebook-wrapper -->
-
-    <!-- ===== NAVIGATION CONTROLS ===== -->
-    <nav id="nav-controls" aria-label="Notebook navigation">
-      <button id="prev-btn" class="nav-btn" aria-label="Previous page" disabled>
-        <span class="nav-icon">‹</span>
-        <span class="nav-label">Prev</span>
-      </button>
-      <div id="page-indicator" aria-live="polite" aria-label="Current page">
-        <span id="current-page-num">Cover</span>
-      </div>
-      <button id="next-btn" class="nav-btn" aria-label="Next page">
-        <span class="nav-label">Next</span>
-        <span class="nav-icon">›</span>
-      </button>
-    </nav>
-
-    <!-- ===== SECTION NAV PILLS ===== -->
-    <div id="section-pills" aria-label="Quick section navigation">
-      <button class="pill active" data-target="0" aria-label="Go to cover">Cover</button>
-      <button class="pill" data-target="1" aria-label="Go to about">About</button>
-      <button class="pill" data-target="2" aria-label="Go to skills">Skills</button>
-      <button class="pill" data-target="3" aria-label="Go to featured projects">Featured</button>
-      <button class="pill" data-target="4" aria-label="Go to lab showcase">Showcase</button>
-      <button class="pill" data-target="5" aria-label="Go to roadmap & contact">Roadmap &amp; CLI</button>
-    </div>
-
-  </div><!-- /#scene -->
-
-  <!-- ===== PROJECT DETAILS MODAL ===== -->
-  <div id="project-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <div class="modal-card">
-      <button class="modal-close" onclick="closeProjectModal()" aria-label="Close modal">✕</button>
-      <div id="modal-content">
-        <!-- Content dynamically injected via JS -->
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== LOADING SCREEN ===== -->
-  <div id="loading-screen" aria-label="Loading portfolio" role="status">
-    <div class="loader-book" aria-hidden="true">
-      <div class="loader-cover"></div>
-      <div class="loader-page"></div>
-      <div class="loader-page"></div>
-    </div>
-    <p class="loader-text handwritten">Initializing Suhail's Lab Notebook...</p>
-    <div class="loader-dots" aria-hidden="true">
-      <span></span><span></span><span></span>
-    </div>
-  </div>
-
-  <!-- ===== MEDIA SOUND ASSETS ===== -->
-  <audio id="bg-music" src="assets/Never Get Enough.mp4" loop preload="auto"></audio>
-  <audio id="page-flip-audio" src="assets/Flipping Pages Slow 01.mp4" preload="auto"></audio>
-  <audio id="typing-audio" src="assets/Typing.mp4" preload="auto"></audio>
-
-  <script src="app.js"></script>
+  /* ------------------------------------------------------------------ */
+  resize();
+  requestAnimationFrame(loop);
+})();
+</script>
 </body>
 </html>
